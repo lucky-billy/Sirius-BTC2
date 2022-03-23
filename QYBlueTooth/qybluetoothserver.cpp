@@ -24,11 +24,20 @@ void QYBlueToothServer::createServer()
    m_server = new QBluetoothServer(QBluetoothServiceInfo::RfcommProtocol, this);
    connect(m_server, &QBluetoothServer::newConnection, [&](){ clientConnected(); });
 
+   // 开启监听
    bool ret = m_server->listen(m_localDevice->address());
-   if ( !ret ) {
+   if ( ret ) {
+       qDebug() << "Start listen " << m_localDevice->address().toString();
+   } else {
        qDebug() << "Cannot bind server to " << m_localDevice->address().toString();
        return;
    }
+
+   /*
+    * 一个服务器要想工作，必须得让人知道它在那，然后跟它连接上。因此，为了让其它设备可以发现它，
+    * 我们需要在系统的SDP(Serever Discovery Protoco)数据库上构建描述其属性的记录。
+    * 这些属性可以封装在一个 QBluetoothServerInfo 对象中。
+    */
 
    // 创建服务，类UUID必须至少包含一个条目
    QBluetoothServiceInfo::Sequence classId;
@@ -46,9 +55,10 @@ void QYBlueToothServer::createServer()
    // 设置服务 UUID
    m_serviceInfo.setServiceUuid(QBluetoothUuid(serviceUuid));
 
-   // 设置服务可发现性
-   m_serviceInfo.setAttribute(QBluetoothServiceInfo::BrowseGroupList,
-                              QBluetoothUuid(QBluetoothUuid::PublicBrowseGroup));
+   // 设置服务可以被其他设备发现
+   QBluetoothServiceInfo::Sequence publicBrowse;
+   publicBrowse << QVariant::fromValue(QBluetoothUuid(QBluetoothUuid::PublicBrowseGroup));
+   m_serviceInfo.setAttribute(QBluetoothServiceInfo::BrowseGroupList, publicBrowse);
 
    // 设置协议描述符列表
    QBluetoothServiceInfo::Sequence protocolDescriptorList;
@@ -60,17 +70,28 @@ void QYBlueToothServer::createServer()
    protocol << QVariant::fromValue(QBluetoothUuid(QBluetoothUuid::Rfcomm))
             << QVariant::fromValue(quint8(m_server->serverPort()));
    protocolDescriptorList.append(QVariant::fromValue(protocol));
+
    m_serviceInfo.setAttribute(QBluetoothServiceInfo::ProtocolDescriptorList,
-                            protocolDescriptorList);
+                              protocolDescriptorList);
 
    // 注册服务
-   m_serviceInfo.registerService(m_localDevice->address());
+   ret = m_serviceInfo.registerService(m_localDevice->address());
+   if ( ret ) {
+       qDebug() << "Register service successfully !";
+   } else {
+       qDebug() << "Register service failed !";
+   }
 }
 
 void QYBlueToothServer::destroyServer()
 {
     // 注销服务
-    m_serviceInfo.unregisterService();
+    bool ret = m_serviceInfo.unregisterService();
+    if ( ret ) {
+        qDebug() << "Unregister service successfully !";
+    } else {
+        qDebug() << "Unregister service failed !";
+    }
 
     // 销毁服务器
     delete m_server;
@@ -80,7 +101,9 @@ void QYBlueToothServer::destroyServer()
 void QYBlueToothServer::clientConnected()
 {
     m_socket = m_server->nextPendingConnection();
-    if ( !m_socket ) {
+    if ( m_socket ) {
+        qDebug() << "nextPendingConnection";
+    } else {
         qDebug() << "Invalid client !";
         return;
     }
@@ -94,11 +117,6 @@ void QYBlueToothServer::clientConnected()
 
 void QYBlueToothServer::readData()
 {
-    if ( !m_socket ) {
-        qDebug() << "Invalid client !";
-        return;
-    }
-
     QByteArray data = m_socket->readAll();
     QString str = QString::fromLatin1(data);
     qDebug() << "readData: " + str;
@@ -106,8 +124,8 @@ void QYBlueToothServer::readData()
 
 void QYBlueToothServer::sendData(QString data)
 {
-    if ( !m_socket ) {
-        qDebug() << "Invalid client !";
+    if ( !m_socket->isOpen() ) {
+        qDebug() << "Device not open !";
         return;
     }
 

@@ -35,5 +35,12 @@ HEADERS += \
     QYBlueTooth/qybluetoothclient.h \
     QYBlueTooth/qybluetoothserver.h
 
+#******************************************************************************************************************
+
+TARGET = Sirius-BTC2
+
+DESTDIR = ./
 
 QT += bluetooth
+#QT += androidextras
+#CONFIG += console

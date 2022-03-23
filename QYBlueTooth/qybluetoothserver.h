@@ -17,7 +17,7 @@ public:
     ~QYBlueToothServer();
 
     // 发送数据
-    void sendData(QString data);
+    Q_INVOKABLE void sendData(QString data);
 
 protected:
     // 创建服务器

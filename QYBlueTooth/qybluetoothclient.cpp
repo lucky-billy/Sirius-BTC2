@@ -19,8 +19,10 @@ QYBlueToothClient::QYBlueToothClient(QObject *parent) : QObject(parent)
             [&](const QBluetoothDeviceInfo &info){ findNewDevice(info); });
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished,
             [](){ qDebug() << "Device discovery finished !"; });
+}
 
-    // 开始扫描蓝牙设备
+void QYBlueToothClient::startDiscovery()
+{
     m_discoveryAgent->start();
 }
 
@@ -28,18 +30,13 @@ void QYBlueToothClient::findNewDevice(const QBluetoothDeviceInfo &info)
 {
     qDebug() << "name: " + info.name();
     qDebug() << "address: " + info.address().toString();
-    qDebug() << "deviceUuid: " + info.deviceUuid().toString();
+    qDebug() << "deviceUuid: " + info.deviceUuid().toString() << endl;
 
-    m_socket->connectToService(info.address(), QBluetoothUuid(serviceUuid) ,QIODevice::ReadWrite);
+//    m_socket->connectToService(info.address(), QBluetoothUuid(serviceUuid), QIODevice::ReadWrite);
 }
 
 void QYBlueToothClient::readData()
 {
-    if ( !m_socket ) {
-        qDebug() << "Invalid client !";
-        return;
-    }
-
     QByteArray data = m_socket->readAll();
     QString str = QString::fromLatin1(data);
     qDebug() << "readData: " + str;
@@ -47,8 +44,8 @@ void QYBlueToothClient::readData()
 
 void QYBlueToothClient::sendData(QString data)
 {
-    if ( !m_socket ) {
-        qDebug() << "Invalid client !";
+    if ( !m_socket->isOpen() ) {
+        qDebug() << "Device not open !";
         return;
     }
 
