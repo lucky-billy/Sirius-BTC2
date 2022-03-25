@@ -4,6 +4,9 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    QYBlueToothServer server;
+	
+    QYBlueToothServer blueToothServer;
+	blueToothServer.createServer();
+	
     return a.exec();
 }
